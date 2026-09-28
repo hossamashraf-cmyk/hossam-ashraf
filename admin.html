@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>لوحة تحكم حسام أشرف</title>
+  <style>
+    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #070b14; color: #e9eefa; padding: 20px; }
+    .container { max-width: 600px; margin: 40px auto; background: #0b1120; padding: 30px; border-radius: 15px; border: 1px solid #1e293b; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+    h2 { text-align: center; color: #3b82f6; margin-bottom: 20px; }
+    input, select, button { width: 100%; padding: 12px; margin: 8px 0 15px; border-radius: 8px; border: 1px solid #334155; background: #0f172a; color: #fff; font-size: 16px; box-sizing: border-box; }
+    input:focus, select:focus { outline: none; border-color: #3b82f6; }
+    button { background: #3b82f6; cursor: pointer; font-weight: bold; border: none; transition: 0.3s; }
+    button:hover { background: #2563eb; }
+    .video-item { display: flex; justify-content: space-between; align-items: center; background: #1e293b; padding: 15px; margin-bottom: 10px; border-radius: 8px; border: 1px solid #334155; }
+    .delete-btn { background: #ef4444; width: auto; padding: 8px 15px; margin: 0; font-size: 14px; }
+    .delete-btn:hover { background: #dc2626; }
+    hr { border: 0; border-top: 1px solid #334155; margin: 30px 0; }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <h2>إضافة فيديو جديد للموقع</h2>
+  <form id="addForm">
+    <input type="text" id="title_ar" placeholder="اسم الفيديو (عربي) - مثلا: مكة ستور" required>
+    <input type="text" id="title_en" placeholder="اسم الفيديو (إنجليزي) - مثلا: Makkah Store" required>
+    <input type="text" id="role_ar" placeholder="الدور (عربي) - مثلا: مونتاج • ألوان" required>
+    <input type="text" id="role_en" placeholder="الدور (إنجليزي) - مثلا: Editing • Color" required>
+    <input type="text" id="video_id" placeholder="معرف يوتيوب (ID) - مثلا: lARBWhyeRBg" required>
+    
+    <label style="font-size: 14px; color: #98a4bf;">القسم:</label>
+    <select id="category">
+      <option value="reels">ريلز (Reels)</option>
+      <option value="videos">فيديوهات (Videos)</option>
+      <option value="ai">ذكاء اصطناعي (AI)</option>
+      <option value="history">التاريخ يُحكى</option>
+    </select>
+
+    <label style="font-size: 14px; color: #98a4bf;">أبعاد الفيديو:</label>
+    <select id="orientation">
+      <option value="vertical">طولي للموبايل (Vertical)</option>
+      <option value="wide">بالعرض للكمبيوتر (Wide)</option>
+    </select>
+
+    <button type="submit">إضافة ونشر في الموقع</button>
+  </form>
+
+  <hr>
+
+  <h2>الفيديوهات الحالية</h2>
+  <div id="videoList">جاري التحميل...</div>
+</div>
+
+<script>
+  if (prompt("أدخل الرقم السري للوحة التحكم:") !== "hossam2026") {
+    document.body.innerHTML = "<h2 style='text-align:center; color:#ef4444; margin-top:50px;'>عفواً، غير مصرح لك بالدخول</h2>";
+    throw new Error("Access Denied");
+  }
+
+  const SUPABASE_URL = 'https://qfuhdgdplhprgjmqyuaj.supabase.co/rest/v1/projects';
+  const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFmdWhkZ2RwbGhwcmdqbXF5dWFqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA1ODI0NDIsImV4cCI6MjEwNjE1ODQ0Mn0.HdEIS1Vf-7R873AB2lGwMMLRsLXickHBRM3PJb2DbG0';
+
+  const headers = {
+    'apikey': SUPABASE_KEY,
+    'Authorization': 'Bearer ' + SUPABASE_KEY,
+    'Content-Type': 'application/json',
+    'Prefer': 'return=representation'
+  };
+
+  async function loadVideos() {
+    const res = await fetch(SUPABASE_URL + '?select=*&order=id.desc', { headers });
+    const data = await res.json();
+    const list = document.getElementById('videoList');
+    list.innerHTML = '';
+    
+    if (data.length === 0) { list.innerHTML = '<p style="text-align:center; color:#98a4bf;">لا توجد فيديوهات، أضف أول فيديو الآن.</p>'; return; }
+
+    data.forEach(v => {
+      list.innerHTML += `
+        <div class="video-item">
+          <div>
+            <strong style="display:block; margin-bottom:5px;">${v.title_ar}</strong>
+            <span style="font-size:12px; color:#98a4bf; background:#0f172a; padding:3px 8px; border-radius:4px;">${v.category}</span>
+          </div>
+          <button class="delete-btn" onclick="deleteVideo(${v.id})">حذف</button>
+        </div>
+      `;
+    });
+  }
+
+  document.getElementById('addForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn = e.target.querySelector('button[type="submit"]');
+    btn.textContent = 'جاري الإضافة...';
+    btn.disabled = true;
+
+    const body = JSON.stringify({
+      title_ar: document.getElementById('title_ar').value,
+      title_en: document.getElementById('title_en').value,
+      role_ar: document.getElementById('role_ar').value,
+      role_en: document.getElementById('role_en').value,
+      video_id: document.getElementById('video_id').value,
+      category: document.getElementById('category').value,
+      orientation: document.getElementById('orientation').value
+    });
+
+    try {
+      await fetch(SUPABASE_URL, { method: 'POST', headers, body });
+      alert('تم إضافة الفيديو للموقع بنجاح يا برنس!');
+      e.target.reset();
+      loadVideos();
+    } catch(err) {
+      alert('حصل مشكلة أثناء الإضافة!');
+    }
+    btn.textContent = 'إضافة ونشر في الموقع';
+    btn.disabled = false;
+  });
+
+  async function deleteVideo(id) {
+    if(confirm('متأكد إنك عاوز تمسح الفيديو ده من الموقع؟')) {
+      await fetch(`${SUPABASE_URL}?id=eq.${id}`, { method: 'DELETE', headers });
+      loadVideos();
+    }
+  }
+
+  loadVideos();
+</script>
+</body>
+</html>

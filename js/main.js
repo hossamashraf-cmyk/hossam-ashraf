@@ -1,11 +1,15 @@
 /* =====================================================
-   Main app logic
+   Main app logic - Dynamic Supabase Integration
    ===================================================== */
 (function () {
   'use strict';
 
-  const $ = (sel, ctx = document) => ctx.querySelector(sel);
-  const $$ = (sel, ctx = document) => Array.from(ctx.querySelectorAll(sel));
+  const SUPABASE_URL = 'https://qfuhdgdplhprgjmqyuaj.supabase.co/rest/v1/projects?select=*&order=id.asc';
+  const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFmdWhkZ2RwbGhwcmdqbXF5dWFqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA1ODI0NDIsImV4cCI6MjEwNjE1ODQ0Mn0.HdEIS1Vf-7R873AB2lGwMMLRsLXickHBRM3PJb2DbG0';
+
+  let DB_PROJECTS = [];
+
+  const $ = (sel, ctx = document) => ctx.querySelector(sel);   const $$ = (sel, ctx = document) => Array.from(ctx.querySelectorAll(sel));
 
   let lang = localStorage.getItem('lang') || 'en';
   let activeFilter = 'all';
@@ -44,9 +48,7 @@
   function applyLang() {
     document.documentElement.lang = lang;
     document.documentElement.dir = lang === 'ar' ? 'rtl' : 'ltr';
-    $$('[data-i18n]').forEach((el) => { el.innerHTML = t(el.dataset.i18n); });
-    $$('[data-i18n-placeholder]').forEach((el) => { el.placeholder = t(el.dataset.i18nPlaceholder); });
-    $('#lang-toggle-label').textContent = t('lang.switch');
+    $$('[data-i18n]').forEach((el) => { el.innerHTML = t(el.dataset.i18n); });$$('[data-i18n-placeholder]').forEach((el) => { el.placeholder = t(el.dataset.i18nPlaceholder); });$('#lang-toggle-label').textContent = t('lang.switch');
     document.title = lang === 'ar'
       ? 'حسام أشرف — مونتير فيديو وصانع محتوى بصري'
       : 'Hossam Ashraf — Video Editor & Visual Storyteller';
@@ -63,14 +65,17 @@
   });
 
   /* ---------- Portfolio ---------- */
-  const ALL_PLAYABLE = () => PROJECTS.concat(HISTORY_SERIES.episodes);
+  const ALL_PLAYABLE = () => {
+    const hist = (typeof HISTORY_SERIES !== 'undefined') ? HISTORY_SERIES.episodes : [];
+    return DB_PROJECTS.concat(hist);
+  };
 
   function projectCard(p) {
     const srcs = thumbSources(p);
     const badgeCat = p.category === 'ai'
       ? `<span class="work-badge ai"><i class="fa-solid fa-wand-magic-sparkles"></i> ${t('work.ai')}</span>`
       : p.category === 'history'
-        ? `<span class="work-badge history"><i class="fa-solid fa-landmark"></i> ${t('history.ep')} ${String(p.ep).padStart(2, '0')}</span>`
+        ? `<span class="work-badge history"><i class="fa-solid fa-landmark"></i> ${t('history.ep')} ${String(p.ep || '').padStart(2, '0')}</span>`
       : p.category === 'reels'
         ? `<span class="work-badge"><i class="fa-solid fa-mobile-screen"></i> ${t('work.f.reels')}</span>`
         : `<span class="work-badge"><i class="fa-solid fa-film"></i> ${t('work.f.videos')}</span>`;
@@ -96,8 +101,8 @@
   }
 
   function renderPortfolio() {
-    const featured = PROJECTS.filter((p) => p.orientation === 'wide' && (activeFilter === 'all' || p.category === activeFilter));
-    const vertical = PROJECTS.filter((p) => p.orientation === 'vertical' && (activeFilter === 'all' || p.category === activeFilter));
+    const featured = DB_PROJECTS.filter((p) => p.orientation === 'wide' && (activeFilter === 'all' || p.category === activeFilter));
+    const vertical = DB_PROJECTS.filter((p) => p.orientation === 'vertical' && (activeFilter === 'all' || p.category === activeFilter));
 
     const fGrid = $('#featured-grid'), vGrid = $('#reels-grid');
     fGrid.innerHTML = featured.map(projectCard).join('');
@@ -113,32 +118,8 @@
   }
 
   function bindThumbFallbacks(scope) {
-    $$('.work-img', scope).forEach((img) => {
-      if (img.dataset.bound) return;
-      img.dataset.bound = '1';
-      img.addEventListener('error', function () {
-        const list = (this.dataset.fallbacks || '').split('|').filter(Boolean);
-        if (list.length) { this.src = list.shift(); this.dataset.fallbacks = list.join('|'); }
-        else {
-          const fb = document.createElement('div');
-          fb.className = 'work-thumb-fallback';
-          fb.innerHTML = '<i class="fa-solid fa-clapperboard"></i>';
-          this.replaceWith(fb);
-        }
-      });
-      // YouTube returns a 120x90 placeholder instead of 404 for missing sizes
-      img.addEventListener('load', function () {
-        if (this.naturalWidth <= 120 && this.dataset.fallbacks) {
-          const list = this.dataset.fallbacks.split('|');
-          this.src = list.shift();
-          this.dataset.fallbacks = list.join('|');
-        }
-      });
-    });
-  }
-
-  function bindCards() {
-    $$('.work-card').forEach((card) => {
+    $$('.work-img', scope).forEach((img) => {       if (img.dataset.bound) return;       img.dataset.bound = '1';       img.addEventListener('error', function () {         const list = (this.dataset.fallbacks \vert{}\vert{} '').split('\vert{}').filter(Boolean);         if (list.length) { this.src = list.shift(); this.dataset.fallbacks = list.join('\vert{}'); }         else {           const fb = document.createElement('div');           fb.className = 'work-thumb-fallback';           fb.innerHTML = '<i class="fa-solid fa-clapperboard"></i>';           this.replaceWith(fb);         }       });       img.addEventListener('load', function () {         if (this.naturalWidth <= 120 && this.dataset.fallbacks) {           const list = this.dataset.fallbacks.split('\vert{}');           this.src = list.shift();           this.dataset.fallbacks = list.join('\vert{}');         }       });     });   }    function bindCards() {     $$
+('.work-card').forEach((card) => {
       if (card.dataset.bound) return;
       card.dataset.bound = '1';
       card.addEventListener('click', () => openProject(card.dataset.id));
@@ -147,6 +128,7 @@
 
   /* ---------- History series ---------- */
   function renderHistory() {
+    if (typeof HISTORY_SERIES === 'undefined') return;
     const grid = $('#history-grid');
     grid.innerHTML = HISTORY_SERIES.episodes.map(projectCard).join('');
     bindThumbFallbacks(grid);
@@ -154,15 +136,11 @@
     observeReveals();
   }
 
-  $('#filter-bar').addEventListener('click', (e) => {
-    const btn = e.target.closest('.filter-btn');
-    if (!btn) return;
-    activeFilter = btn.dataset.filter;
-    $$('.filter-btn').forEach((b) => { b.classList.toggle('active', b === btn); b.setAttribute('aria-selected', b === btn); });
+  $('#filter-bar').addEventListener('click', (e) => {     const btn = e.target.closest('.filter-btn');     if (!btn) return;     activeFilter = btn.dataset.filter;     $$('.filter-btn').forEach((b) => { b.classList.toggle('active', b === btn); b.setAttribute('aria-selected', b === btn); });
     renderPortfolio();
   });
 
-  /* ---------- Lightbox ---------- */
+  /* ---------- Lightbox & Back Button Fix ---------- */
   const lb = $('#lightbox'), lbPlayer = $('#lightbox-player'), lbDialog = $('#lightbox-dialog');
 
   function openProject(id) {
@@ -182,23 +160,42 @@
     lb.classList.add('open');
     lb.setAttribute('aria-hidden', 'false');
     document.body.classList.add('no-scroll');
+
+    try {
+      if (window.location.hash !== '#playing') {
+        history.pushState({ lightbox: true }, "", "#playing");
+      }
+    } catch(e) { }
   }
 
-  function closeLightbox() {
+  function closeLightbox(fromPopstate = false) {
+    if (!lb.classList.contains('open')) return;
     lb.classList.remove('open');
     lb.setAttribute('aria-hidden', 'true');
     lbPlayer.innerHTML = '';
     document.body.classList.remove('no-scroll');
+
+    try {
+      if (!fromPopstate && window.location.hash === '#playing') {
+        history.back();
+      }
+    } catch(e) {}
   }
-  $('#lightbox-close').addEventListener('click', closeLightbox);
-  $('#lightbox-backdrop').addEventListener('click', closeLightbox);
-  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && lb.classList.contains('open')) closeLightbox(); });
+
+  $('#lightbox-close').addEventListener('click', () => closeLightbox(false));
+  $('#lightbox-backdrop').addEventListener('click', () => closeLightbox(false));
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && lb.classList.contains('open')) closeLightbox(false); });
+
+  window.addEventListener('popstate', () => {
+    if (lb.classList.contains('open')) {
+      closeLightbox(true);
+    }
+  });
 
   /* ---------- Results ---------- */
   let resultsFilter = 'all';
 
   function formatViews(v) {
-    // "166K" → number + unit (same size, unit tinted)
     const m = String(v).match(/^([\d.,]+)\s*([A-Za-z+]*)$/);
     if (!m) return esc(v);
     return `${m[1]}<small>${m[2]}</small>`;
@@ -212,7 +209,8 @@
   };
 
   function sortedResults() {
-    const order = RESULT_INDUSTRIES.map((i) => i.id);
+    if (typeof RESULTS === 'undefined') return [];
+    const order = (typeof RESULT_INDUSTRIES !== 'undefined') ? RESULT_INDUSTRIES.map((i) => i.id) : [];
     return RESULTS.slice().sort((a, b) => {
       const d = order.indexOf(a.industry) - order.indexOf(b.industry);
       return d !== 0 ? d : viewsToNum(b.views) - viewsToNum(a.views);
@@ -220,6 +218,7 @@
   }
 
   function renderResultsFilter() {
+    if (typeof RESULT_INDUSTRIES === 'undefined') return;
     $('#results-filter').innerHTML = RESULT_INDUSTRIES.map((ind) => `
       <button class="filter-btn ${ind.id === resultsFilter ? 'active' : ''}" type="button" role="tab"
         data-industry="${ind.id}" aria-selected="${ind.id === resultsFilter}">${esc(ind.label[lang])}</button>`).join('');
@@ -229,7 +228,7 @@
     renderResultsFilter();
     const list = sortedResults().filter((r) => resultsFilter === 'all' || r.industry === resultsFilter);
     const industryCard = (id) => {
-      const ind = RESULT_INDUSTRIES.find((i) => i.id === id);
+      const ind = (typeof RESULT_INDUSTRIES !== 'undefined') ? RESULT_INDUSTRIES.find((i) => i.id === id) : null;
       return ind ? (ind.card || ind.label)[lang] : id;
     };
     $('#results-grid').innerHTML = list.map((r) => {
@@ -253,6 +252,7 @@
 
   /* ---------- Testimonials ---------- */
   function renderTestimonials() {
+    if (typeof TESTIMONIALS === 'undefined') return;
     $('#testi-grid').innerHTML = TESTIMONIALS.map((x) => `
       <article class="testi-card reveal">
         <i class="fa-solid fa-quote-right testi-quote-icon" aria-hidden="true"></i>
@@ -273,24 +273,7 @@
     entries.forEach((en) => { if (en.isIntersecting) { en.target.classList.add('in'); revealObserver.unobserve(en.target); } });
   }, { threshold: 0.12, rootMargin: '0px 0px -40px 0px' });
   function observeReveals() { $$('.reveal:not(.in)').forEach((el) => revealObserver.observe(el)); }
-  // Safety net: never leave content hidden (slow IO, print, screenshots, odd browsers)
-  setTimeout(() => $$('.reveal:not(.in)').forEach((el) => el.classList.add('in')), 2500);
-
-  /* ---------- Counters ---------- */
-  const counterObserver = new IntersectionObserver((entries) => {
-    entries.forEach((en) => {
-      if (!en.isIntersecting) return;
-      const el = en.target, target = +el.dataset.count, dur = 1400, start = performance.now();
-      const tick = (now) => {
-        const p = Math.min((now - start) / dur, 1), eased = 1 - Math.pow(1 - p, 3);
-        el.textContent = Math.round(target * eased);
-        if (p < 1) requestAnimationFrame(tick);
-      };
-      requestAnimationFrame(tick);
-      counterObserver.unobserve(el);
-    });
-  }, { threshold: 0.5 });
-  $$('.counter').forEach((el) => counterObserver.observe(el));
+  setTimeout(() => $$('.reveal:not(.in)').forEach((el) => el.classList.add('in')), 2500);    /* ---------- Counters ---------- */   const counterObserver = new IntersectionObserver((entries) => {     entries.forEach((en) => {       if (!en.isIntersecting) return;       const el = en.target, target = +el.dataset.count, dur = 1400, start = performance.now();       const tick = (now) => {         const p = Math.min((now - start) / dur, 1), eased = 1 - Math.pow(1 - p, 3);         el.textContent = Math.round(target * eased);         if (p < 1) requestAnimationFrame(tick);       };       requestAnimationFrame(tick);       counterObserver.unobserve(el);     });   }, { threshold: 0.5 });   $$('.counter').forEach((el) => counterObserver.observe(el));
 
   /* ---------- Header / nav ---------- */
   const header = $('#site-header'), burger = $('#nav-burger'), navLinks = $('#nav-links');
@@ -299,10 +282,8 @@
     const open = navLinks.classList.toggle('open');
     burger.setAttribute('aria-expanded', open);
   });
-  $$('#nav-links a').forEach((a) => a.addEventListener('click', () => { navLinks.classList.remove('open'); burger.setAttribute('aria-expanded', 'false'); }));
-
-  // active link highlight
-  const sections = $$('main section[id]');
+  $$('#nav-links a').forEach((a) => a.addEventListener('click', () => { navLinks.classList.remove('open'); burger.setAttribute('aria-expanded', 'false'); }));    const sections = $$
+('main section[id]');
   const linkFor = (id) => $(`#nav-links a[href="#${id}"]`);
   const secObserver = new IntersectionObserver((entries) => {
     entries.forEach((en) => {
@@ -313,7 +294,7 @@
   }, { rootMargin: '-40% 0px -55% 0px' });
   sections.forEach((s) => secObserver.observe(s));
 
-  /* ---------- Contact form → WhatsApp ---------- */
+  /* ---------- Contact form ---------- */
   $('#contact-form').addEventListener('submit', (e) => {
     e.preventDefault();
     const name = $('#cf-name'), msg = $('#cf-msg'), type = $('#cf-type').value;
@@ -324,12 +305,43 @@
     window.open(`https://wa.me/201113930448?text=${encodeURIComponent(text)}`, '_blank', 'noopener');
   });
 
-  /* ---------- Misc ---------- */
-  $('#year').textContent = new Date().getFullYear();
-  // duplicate marquee items for seamless loop
-  const track = $('#marquee-track');
-  track.innerHTML += track.innerHTML;
+  /* ---------- Init App & Fetch Supabase ---------- */
+  async function loadDataAndInit() {
+    try {
+      const res = await fetch(SUPABASE_URL, {
+        headers: {
+          'apikey': SUPABASE_KEY,
+          'Authorization': 'Bearer ' + SUPABASE_KEY
+        }
+      });
+      
+      if (!res.ok) throw new Error('Network response was not ok');
+      const rows = await res.json();
 
-  applyLang();
-  observeReveals();
+      DB_PROJECTS = rows.map(row => ({
+        id: String(row.id),
+        type: 'youtube',
+        ytId: row.video_id,
+        category: row.category,
+        orientation: row.orientation,
+        title: { en: row.title_en, ar: row.title_ar },
+        role: { en: row.role_en, ar: row.role_ar }
+      }));
+    } catch(err) {
+      console.error("Supabase Error:", err);
+    }
+
+    if (DB_PROJECTS.length === 0 && typeof PROJECTS !== 'undefined') {
+        DB_PROJECTS = PROJECTS;
+    }
+
+    $('#year').textContent = new Date().getFullYear();
+    const track = $('#marquee-track');
+    track.innerHTML += track.innerHTML;
+
+    applyLang();
+    observeReveals();
+  }
+
+  loadDataAndInit();
 })();

@@ -1,11 +1,25 @@
 /* =====================================================
-   Main app logic
+   Main app logic - Dynamic Fetch
    ===================================================== */
-(function () {
+(async function () {
   'use strict';
 
-  const $ = (sel, ctx = document) => ctx.querySelector(sel);
-  const $$ = (sel, ctx = document) => Array.from(ctx.querySelectorAll(sel));
+  let PROJECTS, HISTORY_SERIES, RESULT_INDUSTRIES, RESULTS, TESTIMONIALS;
+
+  try {
+    const res = await fetch('data.json');
+    const data = await res.json();
+    PROJECTS = data.projects;
+    HISTORY_SERIES = data.history_series;
+    RESULT_INDUSTRIES = data.result_industries;
+    RESULTS = data.results;
+    TESTIMONIALS = data.testimonials;
+  } catch (error) {
+    console.error("Failed to load site data:", error);
+    return;
+  }
+
+  const $ = (sel, ctx = document) => ctx.querySelector(sel);   const $$ = (sel, ctx = document) => Array.from(ctx.querySelectorAll(sel));
 
   let lang = localStorage.getItem('lang') || 'en';
   let activeFilter = 'all';
@@ -44,9 +58,7 @@
   function applyLang() {
     document.documentElement.lang = lang;
     document.documentElement.dir = lang === 'ar' ? 'rtl' : 'ltr';
-    $$('[data-i18n]').forEach((el) => { el.innerHTML = t(el.dataset.i18n); });
-    $$('[data-i18n-placeholder]').forEach((el) => { el.placeholder = t(el.dataset.i18nPlaceholder); });
-    $('#lang-toggle-label').textContent = t('lang.switch');
+    $$('[data-i18n]').forEach((el) => { el.innerHTML = t(el.dataset.i18n); });$$('[data-i18n-placeholder]').forEach((el) => { el.placeholder = t(el.dataset.i18nPlaceholder); });$('#lang-toggle-label').textContent = t('lang.switch');
     document.title = lang === 'ar'
       ? 'حسام أشرف — مونتير فيديو وصانع محتوى بصري'
       : 'Hossam Ashraf — Video Editor & Visual Storyteller';
@@ -113,32 +125,8 @@
   }
 
   function bindThumbFallbacks(scope) {
-    $$('.work-img', scope).forEach((img) => {
-      if (img.dataset.bound) return;
-      img.dataset.bound = '1';
-      img.addEventListener('error', function () {
-        const list = (this.dataset.fallbacks || '').split('|').filter(Boolean);
-        if (list.length) { this.src = list.shift(); this.dataset.fallbacks = list.join('|'); }
-        else {
-          const fb = document.createElement('div');
-          fb.className = 'work-thumb-fallback';
-          fb.innerHTML = '<i class="fa-solid fa-clapperboard"></i>';
-          this.replaceWith(fb);
-        }
-      });
-      // YouTube returns a 120x90 placeholder instead of 404 for missing sizes
-      img.addEventListener('load', function () {
-        if (this.naturalWidth <= 120 && this.dataset.fallbacks) {
-          const list = this.dataset.fallbacks.split('|');
-          this.src = list.shift();
-          this.dataset.fallbacks = list.join('|');
-        }
-      });
-    });
-  }
-
-  function bindCards() {
-    $$('.work-card').forEach((card) => {
+    $$('.work-img', scope).forEach((img) => {       if (img.dataset.bound) return;       img.dataset.bound = '1';       img.addEventListener('error', function () {         const list = (this.dataset.fallbacks \vert{}\vert{} '').split('\vert{}').filter(Boolean);         if (list.length) { this.src = list.shift(); this.dataset.fallbacks = list.join('\vert{}'); }         else {           const fb = document.createElement('div');           fb.className = 'work-thumb-fallback';           fb.innerHTML = '<i class="fa-solid fa-clapperboard"></i>';           this.replaceWith(fb);         }       });       img.addEventListener('load', function () {         if (this.naturalWidth <= 120 && this.dataset.fallbacks) {           const list = this.dataset.fallbacks.split('\vert{}');           this.src = list.shift();           this.dataset.fallbacks = list.join('\vert{}');         }       });     });   }    function bindCards() {     $$
+('.work-card').forEach((card) => {
       if (card.dataset.bound) return;
       card.dataset.bound = '1';
       card.addEventListener('click', () => openProject(card.dataset.id));
@@ -154,11 +142,7 @@
     observeReveals();
   }
 
-  $('#filter-bar').addEventListener('click', (e) => {
-    const btn = e.target.closest('.filter-btn');
-    if (!btn) return;
-    activeFilter = btn.dataset.filter;
-    $$('.filter-btn').forEach((b) => { b.classList.toggle('active', b === btn); b.setAttribute('aria-selected', b === btn); });
+  $('#filter-bar').addEventListener('click', (e) => {     const btn = e.target.closest('.filter-btn');     if (!btn) return;     activeFilter = btn.dataset.filter;     $$('.filter-btn').forEach((b) => { b.classList.toggle('active', b === btn); b.setAttribute('aria-selected', b === btn); });
     renderPortfolio();
   });
 
@@ -198,7 +182,6 @@
   let resultsFilter = 'all';
 
   function formatViews(v) {
-    // "166K" → number + unit (same size, unit tinted)
     const m = String(v).match(/^([\d.,]+)\s*([A-Za-z+]*)$/);
     if (!m) return esc(v);
     return `${m[1]}<small>${m[2]}</small>`;
@@ -273,24 +256,7 @@
     entries.forEach((en) => { if (en.isIntersecting) { en.target.classList.add('in'); revealObserver.unobserve(en.target); } });
   }, { threshold: 0.12, rootMargin: '0px 0px -40px 0px' });
   function observeReveals() { $$('.reveal:not(.in)').forEach((el) => revealObserver.observe(el)); }
-  // Safety net: never leave content hidden (slow IO, print, screenshots, odd browsers)
-  setTimeout(() => $$('.reveal:not(.in)').forEach((el) => el.classList.add('in')), 2500);
-
-  /* ---------- Counters ---------- */
-  const counterObserver = new IntersectionObserver((entries) => {
-    entries.forEach((en) => {
-      if (!en.isIntersecting) return;
-      const el = en.target, target = +el.dataset.count, dur = 1400, start = performance.now();
-      const tick = (now) => {
-        const p = Math.min((now - start) / dur, 1), eased = 1 - Math.pow(1 - p, 3);
-        el.textContent = Math.round(target * eased);
-        if (p < 1) requestAnimationFrame(tick);
-      };
-      requestAnimationFrame(tick);
-      counterObserver.unobserve(el);
-    });
-  }, { threshold: 0.5 });
-  $$('.counter').forEach((el) => counterObserver.observe(el));
+  setTimeout(() => $$('.reveal:not(.in)').forEach((el) => el.classList.add('in')), 2500);    /* ---------- Counters ---------- */   const counterObserver = new IntersectionObserver((entries) => {     entries.forEach((en) => {       if (!en.isIntersecting) return;       const el = en.target, target = +el.dataset.count, dur = 1400, start = performance.now();       const tick = (now) => {         const p = Math.min((now - start) / dur, 1), eased = 1 - Math.pow(1 - p, 3);         el.textContent = Math.round(target * eased);         if (p < 1) requestAnimationFrame(tick);       };       requestAnimationFrame(tick);       counterObserver.unobserve(el);     });   }, { threshold: 0.5 });   $$('.counter').forEach((el) => counterObserver.observe(el));
 
   /* ---------- Header / nav ---------- */
   const header = $('#site-header'), burger = $('#nav-burger'), navLinks = $('#nav-links');
@@ -299,10 +265,8 @@
     const open = navLinks.classList.toggle('open');
     burger.setAttribute('aria-expanded', open);
   });
-  $$('#nav-links a').forEach((a) => a.addEventListener('click', () => { navLinks.classList.remove('open'); burger.setAttribute('aria-expanded', 'false'); }));
-
-  // active link highlight
-  const sections = $$('main section[id]');
+  $$('#nav-links a').forEach((a) => a.addEventListener('click', () => { navLinks.classList.remove('open'); burger.setAttribute('aria-expanded', 'false'); }));    const sections = $$
+('main section[id]');
   const linkFor = (id) => $(`#nav-links a[href="#${id}"]`);
   const secObserver = new IntersectionObserver((entries) => {
     entries.forEach((en) => {
@@ -313,7 +277,7 @@
   }, { rootMargin: '-40% 0px -55% 0px' });
   sections.forEach((s) => secObserver.observe(s));
 
-  /* ---------- Contact form → WhatsApp ---------- */
+  /* ---------- Contact form ---------- */
   $('#contact-form').addEventListener('submit', (e) => {
     e.preventDefault();
     const name = $('#cf-name'), msg = $('#cf-msg'), type = $('#cf-type').value;
@@ -326,7 +290,6 @@
 
   /* ---------- Misc ---------- */
   $('#year').textContent = new Date().getFullYear();
-  // duplicate marquee items for seamless loop
   const track = $('#marquee-track');
   track.innerHTML += track.innerHTML;
 
